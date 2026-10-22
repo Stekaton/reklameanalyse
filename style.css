@@ -20,3 +20,5 @@
 
 .help-options button[aria-pressed=true]{box-shadow:0 0 0 3px #fff,0 0 0 6px #243d31;outline:none}.help-options button[aria-pressed=true] small{background:#243d31;color:#fff;border-radius:20px;padding:6px 12px}.chosen-help{padding:12px 0;font-size:17px}
 .help-options .help-low[aria-pressed=true]{background:#e2effb}.help-options .help-medium[aria-pressed=true]{background:#eee6fa}.help-options .help-high[aria-pressed=true]{background:#f9e1eb}
+
+.homechoices .tutorial-start{display:flex;align-items:center;justify-content:space-between;gap:16px;width:100%;min-height:56px;padding:16px 20px;background:#dcecf7;color:#193e59;border:2px solid #6a9abc;border-radius:12px;font-size:17px;font-weight:700;text-align:left;box-shadow:0 3px 0 #bfd4e2}.homechoices .tutorial-start:hover{background:#c9e2f3}.homechoices .tutorial-start:focus-visible{outline:3px solid #193e59;outline-offset:3px}

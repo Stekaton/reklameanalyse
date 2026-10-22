@@ -11,7 +11,7 @@ frameSets.logos[0].sentences[0]=['Kampanjen bruker dette argumentet: ',['grunn',
 function supportControls(){return `<details class="support-settings"><summary>Hjelp: ${helpNames[helpLevel()]} · ${state.taskKind==='campaign'?'Holdningskampanje':'Produktreklame'} — endre</summary><p>Du kan bytte hjelp. Hvert nivå beholder sitt eget utkast. Første gang du åpner et nytt nivå, følger den ferdige teksten med som støtte.</p>${helpButtons()}<label class="field">Hva analyserer du?<select data-taskkind><option value="product" ${state.taskKind!=='campaign'?'selected':''}>Produktreklame</option><option value="campaign" ${state.taskKind==='campaign'?'selected':''}>Holdningskampanje</option></select></label></details>`}
 function helpButtons(){return `<div class="help-options">${Object.entries(helpNames).map(([id,name])=>`<button type="button" class="secondary help-${id}" data-help="${id}" aria-pressed="${helpLevel()===id}"><strong>${name}</strong><span>${id==='low'?'Skriv selv med en kort huskeliste':id==='medium'?'Overskrifter, spørsmål og valgfrie startere':'Fyll inn i skriverammer'}</span><small>${helpLevel()===id?'✓ Valgt':'Velg dette nivået'}</small></button>`).join('')}</div>`}
 function setup(){ $('#app').innerHTML=`<section class="setup"><h1 class="pagetitle">Hvor mye hjelp vil du ha?</h1><label class="field">Hva analyserer du?<select data-taskkind><option value="product" ${state.taskKind!=='campaign'?'selected':''}>Produktreklame</option><option value="campaign" ${state.taskKind==='campaign'?'selected':''}>Holdningskampanje</option></select></label>${helpButtons()}<p class="muted">Du kan bytte senere. Alle nivåene lar deg laste ned teksten som Word.</p><p class="chosen-help" role="status">Valgt hjelp: <strong>${helpNames[helpLevel()]}</strong></p><button class="primary" data-begin>Begynn →</button></section>`;}
-home=function(){originalHome();$('.homechoices .primary').dataset.page='setup';$('.homechoices').insertAdjacentHTML('beforeend','<button class="ghost" data-tutorial="0">Se et eksempel – steg for steg →</button>');$('.homehero .muted').textContent='Analyser reklame og holdningskampanjer.';};
+home=function(){originalHome();$('.homechoices .primary').dataset.page='setup';$('.homechoices').insertAdjacentHTML('beforeend','<button class="tutorial-start" data-tutorial="0"><span>Se et eksempel steg for steg</span><span aria-hidden="true">→</span></button>');$('.homehero .muted').textContent='Analyser reklame og holdningskampanjer.';};
 guide=function(){if(!state.setupDone){setup();return}originalGuide();$('#app > section').insertAdjacentHTML('afterbegin',supportControls());if(state.taskKind==='campaign'){$('.pagetitle').textContent='Hva tror du kampanjen bruker?';$('.format legend').textContent='Hvilket format har kampanjen?';}};
 const mediumParts=[['intro','Innledning','Hvem er avsenderen? Hvem er målgruppen, og hva vil avsenderen at de skal kjøpe, gjøre eller mene?','Avsenderen er … Målgruppen er … Det ser jeg fordi …'],['body','Analyse','Hvilke konkrete virkemidler finner du? Hvordan kan de påvirke målgruppen? Undersøk etos, logos og patos der det passer.','Jeg legger merke til … Dette kan få målgruppen til å …'],['end','Avslutning','Hvor godt fungerer budskapet for målgruppen? Begrunn med det du har funnet.','Jeg mener at … fordi …']];
 function simpleDraft(){state.simpleDrafts ||= {};return state.simpleDrafts[helpLevel()] ||= helpLevel()==='low'?{text:''}:{intro:'',body:'',end:''};}
@@ -34,3 +34,27 @@ const campaignExamples={tiltale:'En kampanje med «Ditt valg teller» snakker di
 const originalDetail=openDetail;openDetail=function(id){originalDetail(id);if(state.taskKind==='campaign'&&campaignExamples[id])$('#detailbody').insertAdjacentHTML('beforeend',`<section class="example"><h3>Eksempel fra en holdningskampanje</h3><p>${campaignExamples[id]}</p></section>`);};
 
 $('nav').insertAdjacentHTML('beforeend','<button type="button" class="restart-button" data-newanalysis>↻ Begynn på nytt</button>');
+
+// Track writing activity, not clicks on support choices. Old drafts have no reliable history.
+function hasOlderWriting(){
+ const nonempty=v=>typeof v==='string'&&v.trim().length>0;
+ return Object.values(state.frames||{}).some(d=>nonempty(d.free)||Object.values(d.values||{}).some(nonempty))||Object.values(state.simpleDrafts||{}).some(d=>Object.values(d).some(nonempty))||Object.values(state.writing||{}).some(nonempty)||(state.notes||[]).some(n=>nonempty(n.text))||Object.entries(state.answers||{}).some(([k,v])=>k!=='type'&&nonempty(v));
+}
+if(!state.supportUsage){state.supportUsage={levels:[],olderUnknown:hasOlderWriting()};save();}
+function recordWritingSupport(t){
+ const ds=t.dataset||{};
+ if(!(ds.slot||ds.free||ds.simple||ds.write)||!String(t.value||'').trim())return;
+ state.supportUsage ||= {levels:[],olderUnknown:false};
+ if(!state.supportUsage.levels.includes(helpLevel()))state.supportUsage.levels.push(helpLevel());
+ save();
+}
+document.addEventListener('input',e=>recordWritingSupport(e.target));
+function supportUsageText(){
+ const usage=state.supportUsage||{levels:[]},names=usage.levels.filter(k=>helpNames[k]).map(k=>helpNames[k]);
+ const joined=names.length>1?names.slice(0,-1).join(', ')+' og '+names[names.length-1]:names[0];
+ return 'Brukt skrivestøtte: '+(joined|| (usage.olderUnknown?'Ikke registrert for eldre tekst':'Ingen skriving registrert ennå'))+(usage.olderUnknown&&joined?'. Tidligere bruk er ikke registrert':'');
+}
+const blocksWithoutSupportHistory=analysisBlocks;
+analysisBlocks=function(){const blocks=blocksWithoutSupportHistory();blocks.splice(1,0,{style:'Normal',text:supportUsageText()});return blocks;};
+const setupWithoutSupportNotice=setup;
+setup=function(){setupWithoutSupportNotice();$('.setup').insertAdjacentHTML('beforeend','<p class="muted">Hjelpenivåene du skriver på, blir oppgitt i forhåndsvisningen og Word-filen.</p>');};
